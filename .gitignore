@@ -41,4 +41,4 @@ yarn-error.log*
 next-env.d.ts
 
 # Specific files
-/public/data/README.md
+# Important: README.md data file is now tracked
