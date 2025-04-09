@@ -18,7 +18,29 @@ export function parseMCPServers(): MCPServer[] {
   try {
     // Read README.md file
     const filePath = path.join(process.cwd(), 'public', 'data', 'README.md');
-    const content = fs.readFileSync(filePath, 'utf8');
+    console.log('Attempting to read README.md from:', filePath);
+    
+    let content;
+    try {
+      content = fs.readFileSync(filePath, 'utf8');
+      console.log('Successfully read README.md, length:', content.length);
+    } catch (readError) {
+      console.error('Error reading README.md:', readError);
+      // Check if file exists
+      const exists = fs.existsSync(filePath);
+      console.log('File exists check:', exists);
+      
+      // List files in directory
+      try {
+        const dir = path.dirname(filePath);
+        const files = fs.readdirSync(dir);
+        console.log('Files in directory:', files);
+      } catch (dirError) {
+        console.error('Error listing directory:', dirError);
+      }
+      
+      throw readError;
+    }
     
     // Parse servers from README
     // This pattern matches the repo name, URL, and captures everything after that as the description

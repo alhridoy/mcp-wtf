@@ -63,18 +63,25 @@ export default function Home() {
     try {
       setIsLoading(true);
       setErrorMessage('');
+      console.log('Fetching servers...');
       
       const response = await fetch('/api/servers');
       if (!response.ok) {
+        console.error('Servers API response not OK:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         throw new Error(`Server responded with ${response.status}`);
       }
       
       const data = await response.json();
+      console.log('Servers fetched successfully, count:', data?.length || 0);
       setAllServers(data);
       
       // If no search query, display all servers
       if (!searchQuery.trim()) {
         filterAndDisplayServers(data);
+      } else {
+        console.log('Search query exists, will perform search:', searchQuery);
       }
       
       setIsLoading(false);
@@ -90,13 +97,18 @@ export default function Home() {
     try {
       setIsSearching(true);
       setErrorMessage('');
+      console.log('Performing search for:', query);
       
       const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (!response.ok) {
+        console.error('Search API response not OK:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         throw new Error(`Search failed with status ${response.status}`);
       }
       
       const data: SearchResponse = await response.json();
+      console.log('Search results received:', data);
       
       if (data.error) {
         throw new Error(data.message || 'Search failed');
@@ -116,10 +128,22 @@ export default function Home() {
   
   // Filter and display servers
   function filterAndDisplayServers(servers: MCPServer[]) {
+    console.log('Filtering servers, received count:', servers?.length || 0);
+    
+    // Ensure servers is an array
+    if (!Array.isArray(servers)) {
+      console.error('Received non-array servers data:', servers);
+      setErrorMessage('Invalid data format received from server.');
+      setDisplayedServers([]);
+      return;
+    }
+    
     setDisplayedServers(servers);
     setSearchStatus(searchQuery ? 
       `Found ${servers.length} results ${searchTime > 0 ? `(${searchTime.toFixed(2)} ms)` : ''}` : 
       `Showing ${servers.length} servers`);
+    
+    console.log('Display updated with', servers.length, 'servers');
   }
   
   // Handle search input change
