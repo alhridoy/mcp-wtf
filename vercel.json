@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "ESLINT_SKIP=1 next build",
+  "buildCommand": "NEXT_TELEMETRY_DISABLED=1 next build",
   "installCommand": "npm install",
   "regions": ["sfo1"],
   "github": {
@@ -11,5 +11,9 @@
       "source": "/github",
       "destination": "https://github.com/alhridoy/mcp-wtf"
     }
-  ]
+  ],
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NODE_ENV": "production"
+  }
 }
