@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseMCPServers } from '@/lib/parser';
+import { mcpServers } from '@/lib/data';
 import { initializeSemanticSearch, semanticSearch } from '@/lib/semantic';
 import { getGitHubStats } from '@/lib/github';
 
 // Store the initialization state
 let isInitialized = false;
-const servers = parseMCPServers();
+const servers = mcpServers; // Use hardcoded data
 
 export async function GET(request: NextRequest) {
   console.log('Search API called - environment:', process.env.NODE_ENV);
