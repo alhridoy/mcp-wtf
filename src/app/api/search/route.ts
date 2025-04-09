@@ -8,9 +8,11 @@ let isInitialized = false;
 const servers = parseMCPServers();
 
 export async function GET(request: NextRequest) {
+  console.log('Search API called - environment:', process.env.NODE_ENV);
   try {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
+    console.log('Search query received:', query);
     const start = performance.now();
     
     // Initialize semantic search if not done already

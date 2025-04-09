@@ -16,9 +16,35 @@ export interface MCPServer {
 
 export function parseMCPServers(): MCPServer[] {
   try {
-    // Read README.md file
-    const filePath = path.join(process.cwd(), 'public', 'data', 'README.md');
-    console.log('Attempting to read README.md from:', filePath);
+    // Read README.md file - handle different environments
+    let filePath;
+    
+    // Try multiple possible paths for the README file
+    const possiblePaths = [
+      path.join(process.cwd(), 'public', 'data', 'README.md'),
+      path.join(process.cwd(), '.next', 'server', 'public', 'data', 'README.md'),
+      path.join(process.cwd(), 'data', 'README.md'),
+      '/public/data/README.md',
+      './public/data/README.md'
+    ];
+    
+    console.log('Possible README paths:', possiblePaths);
+    
+    // Find the first path that exists
+    filePath = possiblePaths.find(p => {
+      try {
+        return fs.existsSync(p);
+      } catch {
+        return false;
+      }
+    });
+    
+    if (!filePath) {
+      filePath = possiblePaths[0]; // Use the default path if none found
+      console.log('No valid README path found, using default:', filePath);
+    } else {
+      console.log('Found valid README path:', filePath);
+    }
     
     let content;
     try {
