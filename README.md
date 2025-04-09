@@ -1,4 +1,8 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MCP.wtf - Model Context Protocol Search Engine
+
+A search engine for Model Context Protocol (MCP) servers. This project provides an interface to search and discover different MCP server implementations across multiple programming languages and platforms.
+
+Built with [Next.js](https://nextjs.org) and enhanced with semantic search capabilities.
 
 ## Getting Started
 
