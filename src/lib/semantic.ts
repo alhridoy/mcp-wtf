@@ -5,9 +5,25 @@ import { MCPServer } from './parser';
 env.useBrowserCache = false;
 env.allowLocalModels = false;
 
+// Type definitions for embeddings and model
+type EmbeddingVector = number[];
+type EmbeddingModel = ReturnType<typeof pipeline>;
+
+// Utility function to safely convert model output to EmbeddingVector
+function toEmbeddingVector(data: any): EmbeddingVector {
+  if (data instanceof Float32Array) {
+    return Array.from(data);
+  }
+  if (Array.isArray(data)) {
+    return data.map(item => Number(item));
+  }
+  console.warn('Unexpected embedding data type:', data);
+  return [];
+}
+
 // Cache for embeddings
-let serverEmbeddings: number[][] = [];
-let model: any = null;
+let serverEmbeddings: EmbeddingVector[] = [];
+let model: EmbeddingModel | null = null;
 
 export async function initializeSemanticSearch(servers: MCPServer[]) {
   try {
@@ -22,7 +38,7 @@ export async function initializeSemanticSearch(servers: MCPServer[]) {
       servers.map(async (server) => {
         const text = `${server.name} ${server.description} ${server.language} ${server.type}`;
         const output = await model(text, { pooling: 'mean', normalize: true });
-        return Array.from(output.data);
+        return toEmbeddingVector(output.data);
       })
     );
     
@@ -35,7 +51,7 @@ export async function initializeSemanticSearch(servers: MCPServer[]) {
 }
 
 // Cosine similarity between two vectors
-function cosineSimilarity(a: number[], b: number[]): number {
+function cosineSimilarity(a: EmbeddingVector, b: EmbeddingVector): number {
   const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
   const normA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
   const normB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
@@ -56,7 +72,7 @@ export async function semanticSearch(query: string, servers: MCPServer[], topK: 
     
     // Generate embedding for the query
     const queryOutput = await model(query, { pooling: 'mean', normalize: true });
-    const queryEmbedding = Array.from(queryOutput.data);
+    const queryEmbedding = toEmbeddingVector(queryOutput.data);
     
     // Calculate similarities
     const similarities = serverEmbeddings.map((embedding, index) => ({

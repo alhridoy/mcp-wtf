@@ -1,0 +1,15 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "ESLINT_SKIP=1 next build",
+  "installCommand": "npm install",
+  "regions": ["sfo1"],
+  "github": {
+    "silent": true
+  },
+  "redirects": [
+    {
+      "source": "/github",
+      "destination": "https://github.com/alhridoy/mcp-wtf"
+    }
+  ]
+}
