@@ -18,11 +18,19 @@
   --error-text: #d32f2f;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --light-bg: #1a1a1a;
+  --border-color: #444;
+  --text-color: #e0e0e0;
+  --secondary-text: #aaa;
+  --highlight-bg: #1a2e1a;
+  --highlight-border: #2c682e;
+  --highlight-text: #4caf50;
+  --error-bg: #2c0c0c;
+  --error-border: #5c2626;
+  --error-text: #f44336;
 }
 
 body {
