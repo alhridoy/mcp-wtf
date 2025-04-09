@@ -24,8 +24,10 @@ export async function GET(request: NextRequest) {
       // Fetch GitHub stats for all servers
       const serversWithStats = await Promise.all(
         servers.map(async (server) => {
-          if (server.url.includes('github.com')) {
+          // Always try to get stats for all servers that might be GitHub URLs
+          if (server.url && server.url.includes('github.com')) {
             const stats = await getGitHubStats(server.url);
+            console.log(`Got stats for ${server.name}:`, stats);
             return { ...server, githubStats: stats };
           }
           return server;
@@ -45,8 +47,10 @@ export async function GET(request: NextRequest) {
     // Fetch GitHub stats for search results
     results = await Promise.all(
       results.map(async (server) => {
-        if (server.url.includes('github.com')) {
+        // Always try to get stats for all servers that might be GitHub URLs
+        if (server.url && server.url.includes('github.com')) {
           const stats = await getGitHubStats(server.url);
+          console.log(`Got stats for search result ${server.name}:`, stats);
           return { ...server, githubStats: stats };
         }
         return server;

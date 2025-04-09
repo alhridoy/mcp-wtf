@@ -30,8 +30,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          <ThemeToggle />
-          {children}
+          {/* ThemeToggle is now inside ThemeProvider where it can safely access context */}
+          <div className="relative">
+            <ThemeToggle />
+            {children}
+          </div>
         </ThemeProvider>
       </body>
     </html>

@@ -2,8 +2,18 @@
 
 import React from 'react';
 import { useTheme } from '@/providers/ThemeProvider';
+import ClientOnly from './ClientOnly';
 
 export function ThemeToggle() {
+  return (
+    <ClientOnly>
+      <ThemeToggleButton />
+    </ClientOnly>
+  );
+}
+
+// Inner component that uses theme context
+function ThemeToggleButton() {
   const { theme, toggleTheme } = useTheme();
   
   return (

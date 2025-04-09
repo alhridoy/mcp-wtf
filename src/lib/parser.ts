@@ -248,13 +248,19 @@ export function parseMCPServers(): MCPServer[] {
         }
       }
       
+      // Ensure we have valid values for language and type to avoid "ImplementationUnknown"
+      const languageValue = languages.length > 0 ? languages.join(', ') : 'Unknown';
+      
+      // Ensure there's always a space between type and language
+      const typeValue = type || 'Other';
+      
       mcpServers.push({
         id: id++,
         name: displayName,
         url,
         description: finalDescription, // Use the cleaned description
-        language: languages.join(', '),
-        type,
+        language: languageValue,
+        type: typeValue,
         hostingType: platforms.join(', ') || 'Cross-platform'
       });
     }

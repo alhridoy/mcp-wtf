@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import ClientOnly from '@/components/ClientOnly';
 
 type Theme = 'light' | 'dark';
 type ThemeContextType = {
@@ -10,15 +11,16 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ 
+// Separate component to handle client-side theme logic
+function ThemeLogic({ 
   children 
 }: { 
   children: React.ReactNode 
 }) {
   const [theme, setTheme] = useState<Theme>('light');
   
+  // Initialize theme using browser APIs
   useEffect(() => {
-    // Initialize theme
     const storedTheme = localStorage.getItem('theme') as Theme;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -44,6 +46,20 @@ export function ThemeProvider({
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
+  );
+}
+
+// Main provider that ensures client-side only execution
+export function ThemeProvider({ 
+  children 
+}: { 
+  children: React.ReactNode 
+}) {
+  
+  return (
+    <ClientOnly>
+      <ThemeLogic>{children}</ThemeLogic>
+    </ClientOnly>
   );
 }
 

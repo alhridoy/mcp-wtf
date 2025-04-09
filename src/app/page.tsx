@@ -296,10 +296,10 @@ export default function Home() {
                         </h2>
                         
                         <div className="server-meta">
-                          <div className="meta-row">
-                            {server.type && <span className="capitalize">{server.type}</span>}
-                            {server.language && (
-                              <span className="ml-2">{server.language}</span>
+                          <div className="meta-row flex flex-wrap gap-2">
+                            {server.type && <span className="capitalize bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-sm">{server.type}</span>}
+                            {server.language && server.language !== 'Unknown' && (
+                              <span className="bg-blue-50 dark:bg-blue-900 px-2 py-0.5 rounded text-sm">{server.language}</span>
                             )}
                           </div>
                           {server.githubStats && (
