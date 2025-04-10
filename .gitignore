@@ -41,8 +41,15 @@ yarn-error.log*
 next-env.d.ts
 
 # Specific files
-# Hide all files in the public/data directory
+# Hide all files in the public/data directory except servers.json
 /public/data/*
+!/public/data/servers.json
+
+# Hide data processing scripts
+/public/data/clean_emojis.py
+/public/data/clean_types.py
+/public/data/create_servers_json.py
+/public/data/remove_aggregators.py
 
 # But keep the directory itself
 !/public/data/.gitkeep
