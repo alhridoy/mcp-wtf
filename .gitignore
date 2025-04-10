@@ -41,4 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 # Specific files
-# Important: README.md data file is now tracked
+# Hide all files in the public/data directory
+/public/data/*
+
+# But keep the directory itself
+!/public/data/.gitkeep
