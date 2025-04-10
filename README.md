@@ -8,7 +8,7 @@ A search engine for Model Context Protocol (MCP) servers, providing an interface
 - **Powerful Search**: Find servers by name, description, programming language, or server type
 - **Clean Interface**: Simple, minimalist design focused on helping you find the right MCP server
 - **Detailed Information**: View information about each server including language, type, and hosting method
-- **GitHub Stats**: See GitHub stars, forks, and last update date for repos when available
+
 
 ## What is MCP?
 
