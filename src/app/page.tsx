@@ -3,9 +3,57 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GitHubRepoStats } from '@/lib/github';
-import { mcpServers } from '@/lib/data'; // Import hardcoded data
 
 import './github-stats.css';
+
+// Embed hardcoded data directly in the component to avoid import issues in production
+const HARDCODED_SERVERS = [
+  {
+    id: 1,
+    name: "aws-mcp",
+    url: "https://github.com/lspaccatrosi16/aws-mcp",
+    description: "AWS services integration enabling management and access via standardized MCP interfaces",
+    language: "Go",
+    type: "Cloud",
+    hostingType: "Cloud"
+  },
+  {
+    id: 2,
+    name: "azure-mcp",
+    url: "https://github.com/Azure-Samples/azure-mcp",
+    description: "Azure integration server for accessing Microsoft Cloud resources via MCP protocol",
+    language: "TypeScript",
+    type: "Cloud",
+    hostingType: "Cloud"
+  },
+  {
+    id: 3,
+    name: "mcp-firestore",
+    url: "https://github.com/3p3v/mcp-firestore",
+    description: "Firestore database integration for MCP",
+    language: "TypeScript",
+    type: "Cloud",
+    hostingType: "Cloud"
+  },
+  {
+    id: 4,
+    name: "mcp-server-google-drive",
+    url: "https://github.com/MarkusPfundstein/mcp-server-google-drive",
+    description: "Google Drive integration with folder and file management capabilities",
+    language: "Python",
+    type: "Cloud",
+    hostingType: "Cloud"
+  },
+  {
+    id: 5,
+    name: "chroma-mcp",
+    url: "https://github.com/chroma-core/chroma-mcp",
+    description: "Chroma MCP server to access local and cloud Chroma instances for retrieval capabilities",
+    language: "Python",
+    type: "Database",
+    hostingType: "Self-hosted"
+  }
+];
 
 interface MCPServer {
   id: number;
@@ -66,8 +114,8 @@ export default function Home() {
       setErrorMessage('');
       console.log('Using direct data approach instead of API');
       
-      // Use hardcoded data directly instead of API call
-      const data = mcpServers;
+      // Use hardcoded data embedded directly in the component
+      const data = HARDCODED_SERVERS;
       console.log('Direct data loaded, count:', data?.length || 0);
       setAllServers(data);
       
@@ -96,8 +144,8 @@ export default function Home() {
       
       const start = performance.now();
       
-      // Simple client-side filtering instead of API call
-      const results = mcpServers.filter(server => {
+      // Simple client-side filtering with embedded data
+      const results = HARDCODED_SERVERS.filter(server => {
         const searchableText = [
           server.name,
           server.description,
@@ -176,10 +224,20 @@ export default function Home() {
       return;
     }
     
-    setDisplayedServers(servers);
-    setSearchStatus(searchQuery ? 
-      `Found ${servers.length} results ${searchTime > 0 ? `(${searchTime.toFixed(2)} ms)` : ''}` : 
-      `Showing ${servers.length} servers`);
+    // Show debug info
+    console.log('Server data to display:', servers);
+    
+    // Always ensure we have something to display
+    if (servers.length === 0 && HARDCODED_SERVERS.length > 0) {
+      console.log('No results found but we have hardcoded data, showing at least the first 5 items');
+      setDisplayedServers(HARDCODED_SERVERS.slice(0, 5));
+      setSearchStatus(`No matches found. Showing ${Math.min(5, HARDCODED_SERVERS.length)} sample servers`);
+    } else {
+      setDisplayedServers(servers);
+      setSearchStatus(searchQuery ? 
+        `Found ${servers.length} results ${searchTime > 0 ? `(${searchTime.toFixed(2)} ms)` : ''}` : 
+        `Showing ${servers.length} servers`);
+    }
     
     console.log('Display updated with', servers.length, 'servers');
   }
@@ -202,7 +260,12 @@ export default function Home() {
     e.preventDefault();
     const query = searchQuery.trim();
     if (query) {
-      performSearch(query);
+      console.log('Search form submitted with query:', query);
+      performDirectSearch(query);
+    } else {
+      // If empty search, show all servers
+      console.log('Empty search, showing all servers');
+      filterAndDisplayServers(HARDCODED_SERVERS);
     }
   }
   
