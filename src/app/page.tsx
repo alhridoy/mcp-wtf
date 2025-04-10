@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GitHubRepoStats } from '@/lib/github';
+import { mcpServers } from '@/lib/data'; // Import hardcoded data
 
 import './github-stats.css';
 
@@ -58,23 +59,16 @@ export default function Home() {
     }
   }, [searchQuery]);
   
-  // Fetch all servers
+  // Fetch all servers - using direct data instead of API call
   async function fetchServers() {
     try {
       setIsLoading(true);
       setErrorMessage('');
-      console.log('Fetching servers...');
+      console.log('Using direct data approach instead of API');
       
-      const response = await fetch('/api/servers');
-      if (!response.ok) {
-        console.error('Servers API response not OK:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`Server responded with ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Servers fetched successfully, count:', data?.length || 0);
+      // Use hardcoded data directly instead of API call
+      const data = mcpServers;
+      console.log('Direct data loaded, count:', data?.length || 0);
       setAllServers(data);
       
       // If no search query, display all servers
@@ -82,6 +76,7 @@ export default function Home() {
         filterAndDisplayServers(data);
       } else {
         console.log('Search query exists, will perform search:', searchQuery);
+        performDirectSearch(searchQuery);
       }
       
       setIsLoading(false);
@@ -92,12 +87,55 @@ export default function Home() {
     }
   }
   
-  // Perform search
-  async function performSearch(query: string) {
+  // Perform direct client-side search
+  function performDirectSearch(query: string) {
     try {
       setIsSearching(true);
       setErrorMessage('');
-      console.log('Performing search for:', query);
+      console.log('Performing direct client-side search for:', query);
+      
+      const start = performance.now();
+      
+      // Simple client-side filtering instead of API call
+      const results = mcpServers.filter(server => {
+        const searchableText = [
+          server.name,
+          server.description,
+          server.language,
+          server.type,
+          server.hostingType
+        ].join(' ').toLowerCase();
+        
+        return searchableText.includes(query.toLowerCase());
+      });
+      
+      const end = performance.now();
+      const searchTimeMs = end - start;
+      
+      console.log('Direct search found', results.length, 'results in', searchTimeMs, 'ms');
+      
+      // Update state with search results
+      filterAndDisplayServers(results);
+      setSearchTime(searchTimeMs);
+      setSearchStatus(`Found ${results.length} results (${searchTimeMs.toFixed(2)} ms)`);
+      setIsSearching(false);
+    } catch (error) {
+      setIsSearching(false);
+      setErrorMessage(`Search error: ${(error as Error).message}`);
+      console.error('Search error:', error);
+    }
+  }
+  
+  // Original API search (keeping as backup)
+  async function performSearch(query: string) {
+    try {
+      performDirectSearch(query); // Use direct search instead
+      return;
+      
+      // Rest of original implementation left for reference
+      setIsSearching(true);
+      setErrorMessage('');
+      console.log('Performing API search for:', query);
       
       const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
       if (!response.ok) {
