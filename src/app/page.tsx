@@ -1,59 +1,10 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { GitHubRepoStats } from '@/lib/github';
 
 import './github-stats.css';
-
-// Embed hardcoded data directly in the component to avoid import issues in production
-const HARDCODED_SERVERS = [
-  {
-    id: 1,
-    name: "aws-mcp",
-    url: "https://github.com/lspaccatrosi16/aws-mcp",
-    description: "AWS services integration enabling management and access via standardized MCP interfaces",
-    language: "Go",
-    type: "Cloud",
-    hostingType: "Cloud"
-  },
-  {
-    id: 2,
-    name: "azure-mcp",
-    url: "https://github.com/Azure-Samples/azure-mcp",
-    description: "Azure integration server for accessing Microsoft Cloud resources via MCP protocol",
-    language: "TypeScript",
-    type: "Cloud",
-    hostingType: "Cloud"
-  },
-  {
-    id: 3,
-    name: "mcp-firestore",
-    url: "https://github.com/3p3v/mcp-firestore",
-    description: "Firestore database integration for MCP",
-    language: "TypeScript",
-    type: "Cloud",
-    hostingType: "Cloud"
-  },
-  {
-    id: 4,
-    name: "mcp-server-google-drive",
-    url: "https://github.com/MarkusPfundstein/mcp-server-google-drive",
-    description: "Google Drive integration with folder and file management capabilities",
-    language: "Python",
-    type: "Cloud",
-    hostingType: "Cloud"
-  },
-  {
-    id: 5,
-    name: "chroma-mcp",
-    url: "https://github.com/chroma-core/chroma-mcp",
-    description: "Chroma MCP server to access local and cloud Chroma instances for retrieval capabilities",
-    language: "Python",
-    type: "Database",
-    hostingType: "Self-hosted"
-  }
-];
 
 interface MCPServer {
   id: number;
@@ -66,16 +17,7 @@ interface MCPServer {
   githubStats?: GitHubRepoStats | null;
 }
 
-interface SearchResponse {
-  results: MCPServer[];
-  count: number;
-  time: number;
-  error?: string;
-  message?: string;
-}
-
 export default function Home() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   
   // State variables
@@ -83,7 +25,6 @@ export default function Home() {
   const [allServers, setAllServers] = useState<MCPServer[]>([]);
   const [displayedServers, setDisplayedServers] = useState<MCPServer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [searchTime, setSearchTime] = useState(0);
@@ -95,8 +36,8 @@ export default function Home() {
       setSearchQuery(query);
     }
     
-    // Fetch all servers
-    fetchServers();
+    // Fetch servers from JSON file
+    fetchServersFromJSON();
   }, [searchParams]);
   
   // Effect to perform search when query changes
@@ -107,45 +48,51 @@ export default function Home() {
     }
   }, [searchQuery]);
   
-  // Fetch all servers - using direct data instead of API call
-  async function fetchServers() {
+  // Fetch servers from JSON file
+  async function fetchServersFromJSON() {
     try {
       setIsLoading(true);
       setErrorMessage('');
-      console.log('Using direct data approach instead of API');
+      console.log('Fetching servers from JSON file...');
       
-      // Use hardcoded data embedded directly in the component
-      const data = HARDCODED_SERVERS;
-      console.log('Direct data loaded, count:', data?.length || 0);
-      setAllServers(data);
+      const response = await fetch('/data/servers.json');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch servers: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const servers = data.servers;
+      
+      console.log('Servers loaded from JSON:', servers.length);
+      setAllServers(servers);
       
       // If no search query, display all servers
       if (!searchQuery.trim()) {
-        filterAndDisplayServers(data);
+        setDisplayedServers(servers);
+        setSearchStatus(`Showing all ${servers.length} servers`);
       } else {
-        console.log('Search query exists, will perform search:', searchQuery);
-        performDirectSearch(searchQuery);
+        performSearch(searchQuery);
       }
       
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
-      setErrorMessage('Failed to load server data. Please try again.');
+      setErrorMessage(`Failed to load server data: ${(error as Error).message}`);
       console.error('Error fetching servers:', error);
     }
   }
   
-  // Perform direct client-side search
-  function performDirectSearch(query: string) {
+  // Perform client-side search
+  function performSearch(query: string) {
     try {
-      setIsSearching(true);
+      setIsLoading(true);
       setErrorMessage('');
-      console.log('Performing direct client-side search for:', query);
+      console.log('Performing search for:', query);
       
       const start = performance.now();
       
-      // Simple client-side filtering with embedded data
-      const results = HARDCODED_SERVERS.filter(server => {
+      // Simple client-side filtering
+      const results = allServers.filter(server => {
         const searchableText = [
           server.name,
           server.description,
@@ -160,86 +107,18 @@ export default function Home() {
       const end = performance.now();
       const searchTimeMs = end - start;
       
-      console.log('Direct search found', results.length, 'results in', searchTimeMs, 'ms');
+      console.log('Search found', results.length, 'results in', searchTimeMs, 'ms');
       
-      // Update state with search results
-      filterAndDisplayServers(results);
+      // Update UI with search results
+      setDisplayedServers(results);
       setSearchTime(searchTimeMs);
       setSearchStatus(`Found ${results.length} results (${searchTimeMs.toFixed(2)} ms)`);
-      setIsSearching(false);
+      setIsLoading(false);
     } catch (error) {
-      setIsSearching(false);
+      setIsLoading(false);
       setErrorMessage(`Search error: ${(error as Error).message}`);
       console.error('Search error:', error);
     }
-  }
-  
-  // Original API search (keeping as backup)
-  async function performSearch(query: string) {
-    try {
-      performDirectSearch(query); // Use direct search instead
-      return;
-      
-      // Rest of original implementation left for reference
-      setIsSearching(true);
-      setErrorMessage('');
-      console.log('Performing API search for:', query);
-      
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      if (!response.ok) {
-        console.error('Search API response not OK:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`Search failed with status ${response.status}`);
-      }
-      
-      const data: SearchResponse = await response.json();
-      console.log('Search results received:', data);
-      
-      if (data.error) {
-        throw new Error(data.message || 'Search failed');
-      }
-      
-      // Update state with search results
-      filterAndDisplayServers(data.results);
-      setSearchTime(data.time);
-      setSearchStatus(`Found ${displayedServers.length} results`);
-      setIsSearching(false);
-    } catch (error) {
-      setIsSearching(false);
-      setErrorMessage(`Search error: ${(error as Error).message}`);
-      console.error('Search error:', error);
-    }
-  }
-  
-  // Filter and display servers
-  function filterAndDisplayServers(servers: MCPServer[]) {
-    console.log('Filtering servers, received count:', servers?.length || 0);
-    
-    // Ensure servers is an array
-    if (!Array.isArray(servers)) {
-      console.error('Received non-array servers data:', servers);
-      setErrorMessage('Invalid data format received from server.');
-      setDisplayedServers([]);
-      return;
-    }
-    
-    // Show debug info
-    console.log('Server data to display:', servers);
-    
-    // Always ensure we have something to display
-    if (servers.length === 0 && HARDCODED_SERVERS.length > 0) {
-      console.log('No results found but we have hardcoded data, showing at least the first 5 items');
-      setDisplayedServers(HARDCODED_SERVERS.slice(0, 5));
-      setSearchStatus(`No matches found. Showing ${Math.min(5, HARDCODED_SERVERS.length)} sample servers`);
-    } else {
-      setDisplayedServers(servers);
-      setSearchStatus(searchQuery ? 
-        `Found ${servers.length} results ${searchTime > 0 ? `(${searchTime.toFixed(2)} ms)` : ''}` : 
-        `Showing ${servers.length} servers`);
-    }
-    
-    console.log('Display updated with', servers.length, 'servers');
   }
   
   // Handle search input change
@@ -260,211 +139,164 @@ export default function Home() {
     e.preventDefault();
     const query = searchQuery.trim();
     if (query) {
-      console.log('Search form submitted with query:', query);
-      performDirectSearch(query);
+      performSearch(query);
     } else {
       // If empty search, show all servers
-      console.log('Empty search, showing all servers');
-      filterAndDisplayServers(HARDCODED_SERVERS);
+      setDisplayedServers(allServers);
+      setSearchStatus(`Showing all ${allServers.length} servers`);
     }
   }
   
-  // Handle example search clicks
-  function handleExampleClick(query: string, e: React.MouseEvent) {
-    e.preventDefault();
-    setSearchQuery(query);
+  function getMetadataBadgeClass(type: string) {
+    const lowerType = type.toLowerCase();
     
-    // Update URL
-    const params = new URLSearchParams(window.location.search);
-    params.set('q', query);
-    window.history.pushState({}, '', `?${params.toString()}`);
+    // Language badges
+    if (lowerType === 'python') {
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    } else if (['javascript', 'typescript', 'javascript/typescript'].includes(lowerType)) {
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+    } else if (lowerType === 'go') {
+      return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200';
+    } else if (lowerType === 'rust') {
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+    } else if (lowerType === 'java') {
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+    } else if (lowerType === 'c#') {
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+    }
+    
+    // Hosting type badges
+    else if (lowerType === 'cloud') {
+      return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+    } else if (lowerType === 'self-hosted' || lowerType === 'local service') {
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+    } else if (lowerType.includes('cloud') && lowerType.includes('self-hosted')) {
+      return 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200';
+    }
+    
+    // Type badges with meaningful colors
+    else if (lowerType === 'database') {
+      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200';
+    } else if (lowerType === 'search') {
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
+    } else if (lowerType === 'api gateway') {
+      return 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900 dark:text-fuchsia-200';
+    }
+    
+    // Default case
+    return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
   }
   
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <header>
-          <h1 className="text-3xl font-bold mb-4">MCP.<span className="highlight">wtf</span></h1>
-          
-          <div className="legend mb-6 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold mb-3">Legend</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <h3 className="font-medium mb-2">Programming Language</h3>
-                <ul className="space-y-1 text-sm">
-                  <li><span className="emoji-display">🐍</span> Python</li>
-                  <li><span className="emoji-display">📇</span> TypeScript/JavaScript</li>
-                  <li><span className="emoji-display">🏎️</span> Go</li>
-                  <li><span className="emoji-display">🦀</span> Rust</li>
-                  <li><span className="emoji-display">#️⃣</span> C#</li>
-                  <li><span className="emoji-display">☕</span> Java</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-2">Scope</h3>
-                <ul className="space-y-1 text-sm">
-                  <li><span className="emoji-display">☁️</span> Cloud Service</li>
-                  <li><span className="emoji-display">🏠</span> Local Service</li>
-                  <li><span className="emoji-display">📟</span> Embedded Systems</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-2">Operating System</h3>
-                <ul className="space-y-1 text-sm">
-                  <li><span className="emoji-display">🍎</span> macOS</li>
-                  <li><span className="emoji-display">🪟</span> Windows</li>
-                  <li><span className="emoji-display">🐧</span> Linux</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-4">
-              <h3 className="font-medium mb-2">Special</h3>
-              <ul className="space-y-1 text-sm">
-                <li><span className="emoji-display">🎖️</span> Official Implementation</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="helper-text">
-            Try words, phrases, names, features, and languages. You can also look for exact textual phrases (like
-            <a href="#" className="text-primary-color mx-1" onClick={(e) => handleExampleClick('"coding agent"', e)}>"coding agent"</a>) 
-            and prefix matches (such as 
-            <a href="#" className="text-primary-color mx-1" onClick={(e) => handleExampleClick('python*', e)}>python*</a>).
-          </div>
-          
-          <div className="helper-text">
-            Filter by specific attributes like 
-            <a href="#" className="text-primary-color mx-1" onClick={(e) => handleExampleClick('@language:python', e)}>@language:python</a>, 
-            <a href="#" className="text-primary-color mx-1" onClick={(e) => handleExampleClick('@language:javascript', e)}>@language:javascript</a>, and 
-            <a href="#" className="text-primary-color mx-1" onClick={(e) => handleExampleClick('@type:framework', e)}>@type:framework</a>.
-          </div>
-          
-          <form onSubmit={handleSearchSubmit} className="mt-4 mb-6 relative">
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full p-2 border rounded-md pl-10"
-              placeholder="Search..."
-            />
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2">🔍</span>
-          </form>
-        </header>
+    <main className="p-4 max-w-5xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">
+        MCP.<span className="text-purple-600">wtf</span>
+      </h1>
+      
 
-        <main>
-          {isLoading ? (
-            <div className="text-center py-4">Loading...</div>
-          ) : errorMessage ? (
-            <div className="error-status">{errorMessage}</div>
-          ) : (
-            <>
-              <div className="search-status">{searchStatus}</div>
-              
-              <div className="server-results">
-                {displayedServers.length === 0 ? (
-                  <div className="text-center py-4">No servers found matching your criteria.</div>
-                ) : (
-                  displayedServers.map(server => {
-                    // Extract emoji from description to display separately
-                    const emojis = server.description.match(/[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]/gu) || [];
+      
+      <div className="mb-8">
+        <p className="text-gray-700 dark:text-gray-300 mb-2">
+          Try words, phrases, names, features, and languages. You can also look for exact textual phrases (like "coding agent" ) and prefix matches (such as python* ).
+        </p>
+        <p className="text-gray-700 dark:text-gray-300 mb-4">
+          Filter by specific attributes like @language:python , @language:javascript , and @type:framework .
+        </p>
+        
+        <form onSubmit={handleSearchSubmit} className="relative">
+          <input
+            type="text"
+            placeholder="Search..."
+            className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+          <div className="absolute inset-y-0 left-3 flex items-center">
+            <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </form>
+      </div>
+      
+      {isLoading ? (
+        <div className="text-center py-10">
+          <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+          <p>Loading servers...</p>
+        </div>
+      ) : errorMessage ? (
+        <div className="bg-red-100 dark:bg-red-900 border border-red-200 dark:border-red-800 p-4 rounded-lg text-red-900 dark:text-red-200">
+          {errorMessage}
+        </div>
+      ) : (
+        <>
+          <div className="bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 p-2 rounded-lg mb-4 text-green-900 dark:text-green-200">
+            {searchStatus}
+          </div>
+          
+          {displayedServers.length > 0 ? (
+            <div className="space-y-6">
+              {displayedServers.map(server => (
+                <div key={server.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-start">
+                    <div>
+                      <h3 className="text-xl font-medium mb-1">
+                        <a href={server.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                          {server.name}
+                        </a>
+                      </h3>
+                      <p className="text-gray-700 dark:text-gray-300 mb-2">{server.description}</p>
+                      <div className="flex flex-wrap gap-2 mb-1">
+                        <span className={`px-2 py-1 text-xs rounded-md ${getMetadataBadgeClass(server.language)}`}>
+                          {server.language}
+                        </span>
+                        <span className={`px-2 py-1 text-xs rounded-md ${getMetadataBadgeClass(server.type)}`}>
+                          {server.type}
+                        </span>
+                        <span className={`px-2 py-1 text-xs rounded-md ${getMetadataBadgeClass(server.hostingType)}`}>
+                          {server.hostingType}
+                        </span>
+                      </div>
+                    </div>
                     
-                    // Format emojis to display consistently
-                    const emojiText = [...new Set(emojis)].join(' '); // Remove duplicates
-                    
-                    // Format the description properly with more robust handling
-                    let descriptionText = '';
-                    
-                    // Process different description formats
-                    // Remove any emojis from the beginning
-                    const emojiPattern = /[\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]/gu;
-                    
-                    // First clean out special patterns
-                    let cleanDesc = server.description
-                      // Handle oddly formatted descriptions with double dashes and emojis
-                      .replace(/^\s*-\s*([\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]\s*)+\s*-\s*/gu, '')  
-                      // Handle emojis at start with dash after
-                      .replace(/^\s*([\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]\s*)+\s*-\s*/gu, '')
-                      // Handle just emojis at start without dash
-                      .replace(/^\s*([\u{1F300}-\u{1F6FF}\u{2600}-\u{26FF}]\s*)+/gu, '')
-                      .trim();
-                    
-                    // If it's something like "- actual description"
-                    if (cleanDesc.startsWith('-')) {
-                      cleanDesc = cleanDesc.substring(1).trim();
-                    }
-                    
-                    // If there's still description content
-                    if (cleanDesc) {
-                      descriptionText = cleanDesc;
-                      
-                      // Keep full description
-                      descriptionText = descriptionText;
-                    } else {
-                      // Leave description empty if we couldn't extract anything meaningful
-                      descriptionText = '';
-                    }
-                    
-                    return (
-                      <div key={server.id} className="server-item">
-                        <h2>
-                          <a href={server.url} target="_blank" rel="noopener noreferrer">
-                            {server.name}
-                          </a>
-                          {emojiText && <span className="emoji-display ml-2">{emojiText}</span>}
-                          {descriptionText && (
-                            <span className="server-brief-description"> - {descriptionText}</span>
+                    {server.githubStats && (
+                      <div className="github-stats mt-2 md:mt-0 self-start">
+                        <div className="stats-container">
+                          {server.githubStats.stars !== undefined && (
+                            <div className="stat-item">
+                              <span className="stat-icon">⭐</span>
+                              <span className="stat-value">{server.githubStats.stars.toLocaleString()}</span>
+                            </div>
                           )}
-                        </h2>
-                        
-                        <div className="server-meta">
-                          <div className="meta-row flex flex-wrap gap-2">
-                            {server.type && <span className="capitalize bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-sm">{server.type}</span>}
-                            {server.language && server.language !== 'Unknown' && (
-                              <span className="bg-blue-50 dark:bg-blue-900 px-2 py-0.5 rounded text-sm">{server.language}</span>
-                            )}
-                          </div>
-                          {server.githubStats && (
-                            <div className="github-stats">
-                              <span className="stat-item" title="Stars">
-                                ⭐ {server.githubStats.stars.toLocaleString()}
-                              </span>
-                              <span className="stat-item" title="Forks">
-                                🔱 {server.githubStats.forks.toLocaleString()}
-                              </span>
-                              <span className="stat-item" title="Last Updated">
-                                📅 {new Date(server.githubStats.updatedAt).toLocaleDateString()}
-                              </span>
+                          {server.githubStats.forks !== undefined && (
+                            <div className="stat-item">
+                              <span className="stat-icon">🍴</span>
+                              <span className="stat-value">{server.githubStats.forks.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {server.githubStats.updatedAt && (
+                            <div className="stat-item updated-at">
+                              <span className="stat-value">Updated: {new Date(server.githubStats.updatedAt).toLocaleDateString()}</span>
                             </div>
                           )}
                         </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-10">
+              <p className="text-gray-600 dark:text-gray-400">No servers found matching your criteria.</p>
+            </div>
           )}
-        </main>
-
-        <footer className="mt-12 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
-          <p>
-            A search engine for MCP servers. Data from the 
-            <a 
-              href="https://github.com/punkpeye/awesome-mcp-servers" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary-color mx-1"
-            >
-              Awesome MCP Servers
-            </a> 
-            repository.
-          </p>
-        </footer>
-      </div>
-    </div>
+        </>
+      )}
+      
+      <footer className="mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 text-center text-gray-600 dark:text-gray-400">
+        <p>A search engine for MCP servers. Data from the Awesome MCP Servers repository.</p>
+      </footer>
+    </main>
   );
 }
