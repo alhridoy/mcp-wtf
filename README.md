@@ -1,6 +1,6 @@
 # MCP.wtf - Model Context Protocol Search Engine
 
-A comprehensive search engine for Model Context Protocol (MCP) servers, providing an interface to search and discover different MCP server implementations across multiple programming languages and platforms.
+A search engine for Model Context Protocol (MCP) servers, providing an interface to search and discover different MCP server implementations across multiple programming languages and platforms.
 
 ## Features
 
