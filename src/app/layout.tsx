@@ -36,9 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
+        data-supresshydrationwarning="true"
       >
         <ThemeProvider>
           {/* ThemeToggle is now inside ThemeProvider where it can safely access context */}

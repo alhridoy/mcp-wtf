@@ -1,19 +1,14 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { GitHubRepoStats } from '@/lib/github';
+import { useMiniLMSearch, MCPServer } from '@/lib/minilmSearch';
 
 import './github-stats.css';
 
-interface MCPServer {
-  id: number;
-  name: string;
-  url: string;
-  description: string;
-  language: string;
-  type: string;
-  hostingType: string;
+// Extended to include GitHub stats
+interface ExtendedMCPServer extends MCPServer {
   githubStats?: GitHubRepoStats | null;
 }
 
@@ -28,6 +23,21 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [searchTime, setSearchTime] = useState(0);
+  const [searchType, setSearchType] = useState<'text' | 'semantic'>('text');
+  
+  // Refs for tracking state
+  const isInitialRender = useRef(true);
+  const hasSearchedWithEmbeddings = useRef(false);
+  const processedServersFlag = useRef(false);
+  
+  // Use our lightweight MiniLM search hook
+  const { 
+    isModelLoading, 
+    isProcessingServers,
+    serversWithEmbeddings,
+    processServers, 
+    performHybridSearch 
+  } = useMiniLMSearch();
   
   // Initialize with any URL search params
   useEffect(() => {
@@ -36,17 +46,51 @@ export default function Home() {
       setSearchQuery(query);
     }
     
+    const searchTypeParam = searchParams.get('type');
+    if (searchTypeParam === 'semantic' || searchTypeParam === 'text') {
+      setSearchType(searchTypeParam);
+    }
+    
     // Fetch servers from JSON file
     fetchServersFromJSON();
   }, [searchParams]);
   
-  // Effect to perform search when query changes
+  // Effect to perform search when query changes (real-time search)
   useEffect(() => {
-    const query = searchQuery.trim();
-    if (query) {
-      performSearch(query);
+    // Skip the initial render to prevent immediate search on load
+    if (isInitialRender.current) {
+      isInitialRender.current = false;
+      return;
     }
-  }, [searchQuery]);
+    
+    const query = searchQuery.trim();
+    const timer = setTimeout(() => {
+      // Only perform search if we're not already loading
+      if (!isLoading) {
+        performSearch(query);
+      }
+    }, 250); // Small debounce to prevent excessive searches
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery, isLoading]);
+  
+  // Separate effect to re-run search when embeddings become available, but only once
+  useEffect(() => {
+    // If embeddings just became available and we haven't searched yet
+    if (serversWithEmbeddings.length > 0 && !hasSearchedWithEmbeddings.current && searchQuery.trim() && !isLoading) {
+      console.log('Embeddings now available, running search once...');
+      hasSearchedWithEmbeddings.current = true;
+      performSearch(searchQuery.trim());
+    }
+  }, [serversWithEmbeddings.length, searchQuery, isLoading]);
+  
+  // Process servers with the semantic search hook when servers are loaded - only once
+  useEffect(() => {
+    if (allServers.length > 0 && !processedServersFlag.current) {
+      processedServersFlag.current = true;
+      processServers(allServers);
+    }
+  }, [allServers, processServers]);
   
   // Fetch servers from JSON file
   async function fetchServersFromJSON() {
@@ -82,32 +126,57 @@ export default function Home() {
     }
   }
   
-  // Perform client-side search
-  function performSearch(query: string) {
+  // Perform client-side hybrid search
+  async function performSearch(query: string) {
     try {
       setIsLoading(true);
       setErrorMessage('');
-      console.log('Performing search for:', query);
+      console.log(`Performing hybrid search for: ${query}`);
       
       const start = performance.now();
+      let results: MCPServer[] = [];
       
-      // Simple client-side filtering
-      const results = allServers.filter(server => {
-        const searchableText = [
-          server.name,
-          server.description,
-          server.language,
-          server.type,
-          server.hostingType
-        ].join(' ').toLowerCase();
-        
-        return searchableText.includes(query.toLowerCase());
-      });
+      // If empty query, show all servers
+      if (!query) {
+        setDisplayedServers(allServers);
+        setSearchStatus(`Showing all ${allServers.length} servers`);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Parse for metadata filters
+      const filters: Record<string, string> = {};
+      
+      // Extract language filter
+      if (query.includes('@language:')) {
+        const match = query.match(/@language:([a-zA-Z0-9]+)/);
+        if (match && match[1]) {
+          filters['language'] = match[1];
+        }
+      }
+      
+      // Extract type filter
+      if (query.includes('@type:')) {
+        const match = query.match(/@type:([a-zA-Z0-9-]+)/);
+        if (match && match[1]) {
+          filters['type'] = match[1];
+        }
+      }
+      
+      // Clean query from filter syntax for display and semantic search
+      const cleanQuery = query
+        .replace(/@language:[a-zA-Z0-9]+/g, '')
+        .replace(/@type:[a-zA-Z0-9-]+/g, '')
+        .trim();
+      
+      // Use hybrid search that combines both semantic and text approaches
+      results = await performHybridSearch(cleanQuery, allServers, filters);
+      console.log(`Hybrid search returned ${results.length} results`);
       
       const end = performance.now();
       const searchTimeMs = end - start;
       
-      console.log('Search found', results.length, 'results in', searchTimeMs, 'ms');
+      console.log(`${searchType} search found`, results.length, 'results in', searchTimeMs, 'ms');
       
       // Update UI with search results
       setDisplayedServers(results);
@@ -121,7 +190,9 @@ export default function Home() {
     }
   }
   
-  // Handle search input change
+
+  
+  // Handle search input change with real-time search
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const query = e.target.value;
     setSearchQuery(query);
@@ -131,19 +202,11 @@ export default function Home() {
       const params = new URLSearchParams(window.location.search);
       params.set('q', query);
       window.history.pushState({}, '', `?${params.toString()}`);
-    }
-  }
-  
-  // Handle search form submission
-  function handleSearchSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const query = searchQuery.trim();
-    if (query) {
-      performSearch(query);
     } else {
-      // If empty search, show all servers
-      setDisplayedServers(allServers);
-      setSearchStatus(`Showing all ${allServers.length} servers`);
+      // If no query, remove the query parameter
+      const params = new URLSearchParams(window.location.search);
+      params.delete('q');
+      window.history.pushState({}, '', params.toString() ? `?${params.toString()}` : window.location.pathname);
     }
   }
   
@@ -190,7 +253,7 @@ export default function Home() {
   return (
     <main className="p-4 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">
-        MCP.<span className="text-purple-600">wtf</span>
+        MCP.<span className="text-purple-600">search</span>
       </h1>
       
 
@@ -203,20 +266,78 @@ export default function Home() {
           Filter by specific attributes like @language:python , @language:javascript , and @type:framework .
         </p>
         
-        <form onSubmit={handleSearchSubmit} className="relative">
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-            value={searchQuery}
-            onChange={handleSearchChange}
-          />
-          <div className="absolute inset-y-0 left-3 flex items-center">
-            <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+        <div className="relative mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              aria-label="Search MCP servers"
+            />
+            <div className="absolute inset-y-0 left-3 flex items-center">
+              <svg className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            {(isModelLoading || isProcessingServers) && (
+              <div className="absolute inset-y-0 right-3 flex items-center">
+                <svg className="animate-spin h-4 w-4 text-purple-600" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+            )}
           </div>
-        </form>
+          
+          {isModelLoading && (
+            <div className="text-sm text-purple-600 dark:text-purple-400 flex items-center mt-1 mb-2">
+              <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Loading search model...
+            </div>
+          )}
+          
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(
+              <>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setSearchQuery("Find a database MCP server");
+                    performSearch("Find a database MCP server");
+                  }}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded px-2 py-1 text-gray-700 dark:text-gray-300"
+                >
+                  Find a database MCP
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setSearchQuery("I need to search images");
+                    performSearch("I need to search images");
+                  }}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded px-2 py-1 text-gray-700 dark:text-gray-300"
+                >
+                  I need to search images
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setSearchQuery("Help me automate a browser");
+                    performSearch("Help me automate a browser");
+                  }}
+                  className="text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded px-2 py-1 text-gray-700 dark:text-gray-300"
+                >
+                  Help me automate a browser
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
       
       {isLoading ? (

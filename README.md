@@ -1,37 +1,45 @@
-# MCP.wtf - Model Context Protocol Search Engine
+# MCP Search Next.js
 
-A comprehensive search engine for Model Context Protocol (MCP) servers, providing an interface to search and discover different MCP server implementations across multiple programming languages and platforms.
+A Next.js application for searching and discovering MCP servers.
 
 ## Features
 
-- **Comprehensive Database**: Search through 450+ MCP servers from the official Awesome MCP Servers repository
-- **Powerful Search**: Find servers by name, description, programming language, or server type
-- **Clean Interface**: Simple, minimalist design focused on helping you find the right MCP server
-- **Detailed Information**: View information about each server including language, type, and hosting method
-- **GitHub Stats**: See GitHub stars, forks, and last update date for repos when available
+- Search functionality for MCP servers
+- GitHub stats integration
+- Modern UI with Tailwind CSS
+- Server-side rendering with Next.js
 
-## What is MCP?
+## Getting Started
 
-The Model Context Protocol (MCP) is an open protocol that enables AI models to securely interact with local and remote resources through standardized server implementations. This search engine helps you find MCP servers that extend AI capabilities through file access, database connections, API integrations, and other contextual services.
+1. Clone the repository
+2. Install dependencies:
+```bash
+npm install
+```
+3. Run the development server:
+```bash
+npm run dev
+```
 
-## Categories
+## Tech Stack
 
-This search engine includes MCP servers across many categories including:
+- Next.js 15
+- React 19
+- Tailwind CSS
+- TypeScript
+- GitHub API Integration
 
-- **API Gateways**: Connect to multiple services through a unified MCP interface
-- **Art & Culture**: Access and explore art collections and cultural content
-- **Browser Automation**: Control browsers for web content access and automation
-- **Cloud Platforms**: Manage and interact with cloud infrastructure and services
-- **Code Execution**: Execute code in secure environments
-- **Databases**: Connect to and query various database systems
-- **Developer Tools**: Enhance development workflow with specialized tools
-- **Search**: Find information across various platforms and sources
-- **And many more...**
+## Project Structure
+
+- `/src/app` - Next.js app router pages
+- `/src/components` - React components
+- `/public/data` - Data files (gitignored)
+- `/scripts` - Data processing scripts (gitignored)
 
 ## Contributing
 
-Contributions are welcome! The data for this search engine comes from the [Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers) repository. To add new MCP servers, please contribute to that repository.
-
-## License
-
-MIT
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
